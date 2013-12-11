@@ -126,9 +126,7 @@ class Nest:
         timestamp = datetime.datetime.fromtimestamp(
             allvars['$timestamp']/1000, tzlocal.get_localzone()).isoformat()
         allvars['$timestamp'] = timestamp
-
         logline = json.dumps(allvars, sort_keys=True)
-        print logline
         of.write(logline+'\n')
         of.close()
 
