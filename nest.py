@@ -17,6 +17,9 @@
 #    Chris Burris's Siri Nest Proxy was very helpful to learn the nest's
 #       authentication and some bits of the protocol.
 
+import datetime
+import json
+import tzlocal
 import urllib
 import urllib2
 import sys
@@ -109,6 +112,27 @@ class Nest:
         for k in sorted(allvars.keys()):
              print k + "."*(32-len(k)) + ":", allvars[k]
 
+
+    def log_status(self, outfile):
+        of = open(outfile, 'a+')
+        shared = self.status["shared"][self.serial]
+        device = self.status["device"][self.serial]
+
+        allvars = shared
+        allvars.update(device)
+
+        # Use a more human readable timestamp
+        allvars['$unixtimestamp'] = allvars['$timestamp']
+        timestamp = datetime.datetime.fromtimestamp(
+            allvars['$timestamp']/1000, tzlocal.get_localzone()).isoformat()
+        allvars['$timestamp'] = timestamp
+
+        logline = json.dumps(allvars, sort_keys=True)
+        print logline
+        of.write(logline+'\n')
+        of.close()
+
+
     def show_curtemp(self):
         temp = self.status["shared"][self.serial]["current_temperature"]
         temp = self.temp_out(temp)
@@ -161,6 +185,9 @@ def create_parser():
    parser.add_option("-i", "--index", dest="index", default=0, type="int",
                      help="optional, specify index number of nest to talk to")
 
+   parser.add_option("-o", "--outfile", dest="outfile", default='nest.log',
+                     type="str", help="optional, specify log file for log_status")
+
 
    return parser
 
@@ -173,11 +200,14 @@ def help():
     print "   --serial <number>      ... optional, specify serial number of nest to use"
     print "   --index <number>       ... optional, 0-based index of nest"
     print "                                (use --serial or --index, but not both)"
+    print "   --outfile <filepath>   ... optional, log file for log_status"
+    print
     print
     print "commands: temp, fan, show, curtemp, curhumid"
     print "    temp <temperature>    ... set target temperature"
     print "    fan [auto|on]         ... set fan state"
     print "    show                  ... show everything"
+    print "    log_status            ... log everything in json"
     print "    curtemp               ... print current temperature"
     print "    curhumid              ... print current humidity"
     print
@@ -224,6 +254,8 @@ def main():
         n.show_curtemp()
     elif (cmd == "curhumid"):
         print n.status["device"][n.serial]["current_humidity"]
+    elif (cmd == "log_status"):
+        n.log_status(opts.outfile)
     else:
         print "misunderstood command:", cmd
         print "do 'nest.py help' for help"
